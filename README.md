@@ -36,6 +36,24 @@ An MCP server implementation that integrates with Odoo ERP systems, enabling AI 
     * `end_date` (string): End date in YYYY-MM-DD format
     * `employee_id` (optional number): Optional employee ID to filter holidays
   * Returns: Object containing success indicator, list of holidays found, and any error message
+  * Note: Requires the Time Off (`hr_holidays`) module to be installed
+
+* **execute_sql**
+  * Execute a read-only SQL SELECT query directly on the Odoo PostgreSQL database
+  * Inputs:
+    * `query` (string): A valid SQL SELECT statement
+    * `limit` (optional number): Max rows to return if no LIMIT clause present (default 100)
+  * Returns: Object with `success`, `result` (list of row dicts), `row_count`, and `error`
+
+* **list_db_tables**
+  * List all tables in the Odoo PostgreSQL database
+  * Returns: Object with `success`, `tables` (list of table names), and `error`
+
+* **describe_db_table**
+  * Describe the columns of a table in the Odoo PostgreSQL database
+  * Inputs:
+    * `table_name` (string): The table name (e.g., `res_partner`)
+  * Returns: Object with `success`, `columns` (list of column dicts with name, type, nullable, default), and `error`
 
 ## Resources
 
@@ -81,6 +99,68 @@ An MCP server implementation that integrates with Odoo ERP systems, enabling AI 
    * `ODOO_TIMEOUT`: Connection timeout in seconds (default: 30)
    * `ODOO_VERIFY_SSL`: Whether to verify SSL certificates (default: true)
    * `HTTP_PROXY`: Force the ODOO connection to use an HTTP proxy
+
+### PostgreSQL Direct Access
+
+This MCP supports direct SQL queries against the Odoo PostgreSQL database, bypassing XML-RPC for complex queries or data not exposed via the Odoo API. Requires Odoo 16 / 19.
+
+#### 1. Create a read-only PostgreSQL user (required)
+
+```sql
+-- Run once as the Odoo DB superuser (e.g. psql -U odoo odoo)
+CREATE USER mcp_readonly WITH PASSWORD 'choose-a-strong-password';
+GRANT CONNECT ON DATABASE odoo TO mcp_readonly;
+GRANT USAGE ON SCHEMA public TO mcp_readonly;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO mcp_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO mcp_readonly;
+```
+
+#### 2. PostgreSQL environment variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `POSTGRES_HOST` | `db` | PostgreSQL hostname |
+| `POSTGRES_PORT` | `5432` | PostgreSQL port |
+| `POSTGRES_USER` | — | Database user (**must be read-only**) |
+| `POSTGRES_PASSWORD` | — | Database password |
+| `POSTGRES_DB` | — | Database name |
+| `POSTGRES_MAX_ROWS` | *(unset = unlimited)* | Hard cap on rows per query; unset/empty = all rows |
+| `POSTGRES_SKIP_READONLY_CHECK` | `false` | Bypass SELECT-only check (dev/testing only — **never in production**) |
+
+#### 3. Docker Compose example
+
+```yaml
+services:
+  odoo-mcp:
+    image: mcp/odoo:latest
+    networks:
+      - odoo_default
+    environment:
+      # XML-RPC connection
+      ODOO_URL: http://odoo:8069
+      ODOO_DB: odoo
+      ODOO_USERNAME: admin
+      ODOO_PASSWORD: admin
+      # PostgreSQL direct access
+      POSTGRES_HOST: db
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: mcp_readonly
+      POSTGRES_PASSWORD: choose-a-strong-password
+      POSTGRES_DB: odoo
+
+networks:
+  odoo_default:
+    external: true
+```
+
+For local development (outside Docker), expose the port and use `POSTGRES_HOST=localhost`:
+
+```yaml
+services:
+  db:
+    ports:
+      - "5432:5432"
+```
 
 ### Usage with Claude Desktop
 

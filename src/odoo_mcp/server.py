@@ -13,6 +13,7 @@ from typing import Any, AsyncIterator, Dict, List, Optional, Union, cast
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import BaseModel, Field
 
+from . import postgres_client
 from .odoo_client import OdooClient, get_odoo_client
 
 
@@ -41,7 +42,7 @@ async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
 # Create MCP server
 mcp = FastMCP(
     "Odoo MCP Server",
-    description="MCP Server for interacting with Odoo ERP systems",
+    description="MCP Server for interacting with Odoo ERP systems (Odoo 16 / 18 / 19)",
     dependencies=["requests"],
     lifespan=app_lifespan,
 )
@@ -441,7 +442,16 @@ def search_holidays(
         return SearchHolidaysResponse(success=True, result=parsed_holidays)
 
     except Exception as e:
-        return SearchHolidaysResponse(success=False, error=str(e))
+        err_str = str(e)
+        if any(kw in err_str for kw in ("hr.leave", "report.calendar", "does not exist")):
+            return SearchHolidaysResponse(
+                success=False,
+                error=(
+                    "hr.leave module is not installed in this Odoo instance. "
+                    "Install 'Time Off' (hr_holidays) to use this tool."
+                ),
+            )
+        return SearchHolidaysResponse(success=False, error=err_str)
 
 
 # ── Odoo 18 compatible tools ──────────────────────────────────────────────────
@@ -542,6 +552,25 @@ def search_tasks(
         return SearchTasksResponse(success=False, error=str(e))
 
 
+class SqlQueryResponse(BaseModel):
+    success: bool
+    result: Optional[List[Dict[str, Any]]] = None
+    row_count: Optional[int] = None
+    error: Optional[str] = None
+
+
+class ListTablesResponse(BaseModel):
+    success: bool
+    tables: Optional[List[str]] = None
+    error: Optional[str] = None
+
+
+class DescribeTableResponse(BaseModel):
+    success: bool
+    columns: Optional[List[Dict[str, Any]]] = None
+    error: Optional[str] = None
+
+
 @mcp.tool(description="Search projects. Use this to list or look up projects.")
 def search_projects(
     ctx: Context,
@@ -575,3 +604,60 @@ def search_projects(
         return SearchProjectsResponse(success=True, result=projects)
     except Exception as e:
         return SearchProjectsResponse(success=False, error=str(e))
+
+
+# ── Direct PostgreSQL access tools ───────────────────────────────────────────
+# Bypasses XML-RPC for complex queries or data not exposed via Odoo API.
+# SECURITY: Only SELECT queries are permitted (enforced in postgres_client).
+# NOTE: task_count is a computed ORM field — not in project_project DB schema.
+#       Use: SELECT COUNT(*) FROM project_task WHERE project_id = <id>
+
+
+@mcp.tool(
+    description="Execute a read-only SQL SELECT query directly on the Odoo PostgreSQL database."
+)
+def execute_sql(
+    ctx: Context,
+    query: str,
+    limit: int = 100,
+) -> SqlQueryResponse:
+    """
+    Run a raw SQL SELECT query on the Odoo database.
+
+    Parameters:
+        query: A valid SQL SELECT statement.
+        limit: Max rows to return (appended as LIMIT if not already present, default 100).
+    """
+    try:
+        sql = query.strip()
+        if "LIMIT" not in sql.upper():
+            sql = f"{sql} LIMIT {limit}"
+        rows = postgres_client.execute_query(sql)
+        return SqlQueryResponse(success=True, result=rows, row_count=len(rows))
+    except Exception as e:
+        return SqlQueryResponse(success=False, error=str(e))
+
+
+@mcp.tool(description="List all tables in the Odoo PostgreSQL database.")
+def list_db_tables(ctx: Context) -> ListTablesResponse:
+    """Return all user table names in the public schema."""
+    try:
+        tables = postgres_client.list_tables()
+        return ListTablesResponse(success=True, tables=tables)
+    except Exception as e:
+        return ListTablesResponse(success=False, error=str(e))
+
+
+@mcp.tool(description="Describe the columns of a table in the Odoo PostgreSQL database.")
+def describe_db_table(ctx: Context, table_name: str) -> DescribeTableResponse:
+    """
+    Get column definitions (name, type, nullable, default) for a table.
+
+    Parameters:
+        table_name: The table name (e.g., 'res_partner').
+    """
+    try:
+        columns = postgres_client.describe_table(table_name)
+        return DescribeTableResponse(success=True, columns=columns)
+    except Exception as e:
+        return DescribeTableResponse(success=False, error=str(e))

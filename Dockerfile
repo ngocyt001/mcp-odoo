@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     procps \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy source code
@@ -26,6 +27,15 @@ ENV ODOO_PASSWORD=""
 ENV ODOO_TIMEOUT="30"
 ENV ODOO_VERIFY_SSL="1"
 ENV DEBUG="0"
+
+# PostgreSQL direct access (Odoo database)
+ENV POSTGRES_HOST="db"
+ENV POSTGRES_PORT="5432"
+ENV POSTGRES_USER=""
+ENV POSTGRES_PASSWORD=""
+ENV POSTGRES_DB=""
+ENV POSTGRES_MAX_ROWS=""
+ENV POSTGRES_SKIP_READONLY_CHECK="false"
 
 # Make run_server.py executable
 RUN chmod +x run_server.py
