@@ -442,3 +442,136 @@ def search_holidays(
 
     except Exception as e:
         return SearchHolidaysResponse(success=False, error=str(e))
+
+
+# ── Odoo 18 compatible tools ──────────────────────────────────────────────────
+# Odoo 18 breaking changes vs 16/17:
+#   - project.task: user_id (many2one) → user_ids (many2many)
+#   - project.task: date_assign removed
+#   - hr.leave: date_from/date_to → request_date_from/request_date_to
+
+
+class Task(BaseModel):
+    """A project task (Odoo 18 schema)."""
+
+    id: int
+    name: str
+    project_id: Optional[Any] = None  # [id, name] or False
+    stage_id: Optional[Any] = None    # [id, name] or False
+    user_ids: Optional[List[Any]] = None  # list of [id, name]
+    date_deadline: Optional[str] = None
+    priority: Optional[str] = None
+    active: Optional[bool] = None
+    description: Optional[str] = None
+
+
+class SearchTasksResponse(BaseModel):
+    success: bool
+    result: Optional[List[Task]] = None
+    error: Optional[str] = None
+
+
+class Project(BaseModel):
+    """A project record."""
+
+    id: int
+    name: str
+    partner_id: Optional[Any] = None  # customer
+    user_id: Optional[Any] = None     # project manager
+    date_start: Optional[str] = None
+    date: Optional[str] = None        # deadline
+    active: Optional[bool] = None
+    task_count: Optional[int] = None
+
+
+class SearchProjectsResponse(BaseModel):
+    success: bool
+    result: Optional[List[Project]] = None
+    error: Optional[str] = None
+
+
+# Safe field list for project.task on Odoo 18
+_TASK_FIELDS = [
+    "id", "name", "project_id", "stage_id",
+    "user_ids", "date_deadline", "priority", "active", "description",
+]
+
+# Safe field list for project.project on Odoo 18
+_PROJECT_FIELDS = [
+    "id", "name", "partner_id", "user_id",
+    "date_start", "date", "active", "task_count",
+]
+
+
+@mcp.tool(description="Search project tasks (Odoo 18 compatible). Use this instead of execute_method for project.task.")
+def search_tasks(
+    ctx: Context,
+    project_id: Optional[int] = None,
+    stage_name: Optional[str] = None,
+    active_only: bool = True,
+    limit: int = 50,
+) -> SearchTasksResponse:
+    """
+    Search project tasks using Odoo 18 field names.
+
+    Parameters:
+        project_id: Filter by project ID (None = all projects).
+        stage_name: Filter by stage name (partial, case-insensitive).
+        active_only: Only return active tasks (default True).
+        limit: Max records to return (default 50).
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+    try:
+        domain: List[Any] = []
+        if active_only:
+            domain.append(["active", "=", True])
+        if project_id is not None:
+            domain.append(["project_id", "=", project_id])
+        if stage_name:
+            domain.append(["stage_id.name", "ilike", stage_name])
+
+        records = odoo.search_read(
+            model_name="project.task",
+            domain=domain,
+            fields=_TASK_FIELDS,
+            limit=limit,
+        )
+        tasks = [Task(**r) for r in records]
+        return SearchTasksResponse(success=True, result=tasks)
+    except Exception as e:
+        return SearchTasksResponse(success=False, error=str(e))
+
+
+@mcp.tool(description="Search projects. Use this to list or look up projects.")
+def search_projects(
+    ctx: Context,
+    name: Optional[str] = None,
+    active_only: bool = True,
+    limit: int = 20,
+) -> SearchProjectsResponse:
+    """
+    Search project.project records.
+
+    Parameters:
+        name: Filter by name (partial, case-insensitive).
+        active_only: Only return active projects (default True).
+        limit: Max records to return (default 20).
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+    try:
+        domain: List[Any] = []
+        if active_only:
+            domain.append(["active", "=", True])
+        if name:
+            domain.append(["name", "ilike", name])
+
+        records = odoo.search_read(
+            model_name="project.project",
+            domain=domain,
+            fields=_PROJECT_FIELDS,
+            limit=limit,
+        )
+        projects = [Project(**r) for r in records]
+        return SearchProjectsResponse(success=True, result=projects)
+    except Exception as e:
+        return SearchProjectsResponse(success=False, error=str(e))
