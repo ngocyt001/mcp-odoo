@@ -1,0 +1,1699 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.github/
+  workflows/
+    publish.yml
+  FUNDING.yml
+src/
+  odoo_mcp/
+    __init__.py
+    __main__.py
+    odoo_client.py
+    server.py
+.gitignore
+CHANGELOG.md
+Dockerfile
+LICENSE
+odoo_config.json.example
+pyproject.toml
+README.md
+run_server.py
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".github/workflows/publish.yml">
+name: Publish to PyPI
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        python -m build
+        twine upload dist/*
+</file>
+
+<file path=".github/FUNDING.yml">
+# These are supported funding model platforms
+
+github: [ tuanle96 ]
+ko_fi: earnorm
+</file>
+
+<file path="src/odoo_mcp/__init__.py">
+"""
+Odoo MCP Server - MCP Server for Odoo Integration
+"""
+
+from .server import mcp
+
+__all__ = ["mcp"]
+</file>
+
+<file path="src/odoo_mcp/__main__.py">
+"""
+Command line entry point for the Odoo MCP Server
+"""
+import sys
+import asyncio
+import traceback
+import os
+
+from .server import mcp
+
+
+def main() -> int:
+    """
+    Run the MCP server
+    """
+    try:
+        print("=== ODOO MCP SERVER STARTING ===", file=sys.stderr)
+        print(f"Python version: {sys.version}", file=sys.stderr)
+        print("Environment variables:", file=sys.stderr)
+        for key, value in os.environ.items():
+            if key.startswith("ODOO_"):
+                if key == "ODOO_PASSWORD":
+                    print(f"  {key}: ***hidden***", file=sys.stderr)
+                else:
+                    print(f"  {key}: {value}", file=sys.stderr)
+        
+        # Check if server instance has the run_stdio method
+        methods = [method for method in dir(mcp) if not method.startswith('_')]
+        print(f"Available methods on mcp object: {methods}", file=sys.stderr)
+        
+        print("Starting MCP server with run() method...", file=sys.stderr)
+        sys.stderr.flush()  # Ensure log information is written immediately
+        
+        # Use the run() method directly
+        mcp.run()
+        
+        # If execution reaches here, the server exited normally
+        print("MCP server stopped normally", file=sys.stderr)
+        return 0
+    except KeyboardInterrupt:
+        print("MCP server stopped by user", file=sys.stderr)
+        return 0
+    except Exception as e:
+        print(f"Error starting server: {e}", file=sys.stderr)
+        print("Exception details:", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        print("\nServer object information:", file=sys.stderr)
+        print(f"MCP object type: {type(mcp)}", file=sys.stderr)
+        print(f"MCP object dir: {dir(mcp)}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+</file>
+
+<file path=".gitignore">
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Logs
+logs/
+*.log
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment configuration
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Odoo specific
+odoo_config.json
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+</file>
+
+<file path="CHANGELOG.md">
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [0.0.3] - 2025-03-18
+
+### Fixed
+- Fixed `OdooClient` class by adding missing methods: `get_models()`, `get_model_info()`, `get_model_fields()`, `search_read()`, and `read_records()`
+- Ensured compatibility with different Odoo versions by using only basic fields when retrieving model information
+
+### Added
+- Support for retrieving all models from an Odoo instance
+- Support for retrieving detailed information about specific models
+- Support for searching and reading records with various filtering options
+
+## [0.0.2] - 2025-03-18
+
+### Fixed
+- Added missing dependencies in pyproject.toml: `mcp>=0.1.1`, `requests>=2.31.0`, `xmlrpc>=0.4.1`
+
+## [0.0.1] - 2025-03-18
+
+### Added
+- Initial release with basic Odoo XML-RPC client support
+- MCP Server integration for Odoo
+- Command-line interface for quick setup and testing
+</file>
+
+<file path="Dockerfile">
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy source code
+COPY . /app/
+
+# Create logs directory
+RUN mkdir -p /app/logs && chmod 777 /app/logs
+
+# Install Python dependencies and the package
+RUN pip install --no-cache-dir "mcp[cli]" && \
+    pip install --no-cache-dir -e .
+
+# Set environment variables (can be overridden at runtime)
+ENV ODOO_URL=""
+ENV ODOO_DB=""
+ENV ODOO_USERNAME=""
+ENV ODOO_PASSWORD=""
+ENV ODOO_TIMEOUT="30"
+ENV ODOO_VERIFY_SSL="1"
+ENV DEBUG="0"
+
+# Make run_server.py executable
+RUN chmod +x run_server.py
+
+# Set stdout/stderr to unbuffered mode
+ENV PYTHONUNBUFFERED=1
+
+# Run the custom MCP server script instead of the module
+ENTRYPOINT ["python", "run_server.py"]
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2025 Lê Anh Tuấn
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="odoo_config.json.example">
+{
+  "url": "https://your-odoo-instance.com",
+  "db": "your-database-name",
+  "username": "your-username",
+  "password": "your-password-or-api-key"
+}
+</file>
+
+<file path="run_server.py">
+#!/usr/bin/env python
+"""
+Standalone script to run the Odoo MCP server 
+Uses the same approach as in the official MCP SDK examples
+"""
+import sys
+import os
+import asyncio
+import anyio
+import logging
+import datetime
+
+from mcp.server.stdio import stdio_server
+from mcp.server.lowlevel import Server
+import mcp.types as types
+
+from odoo_mcp.server import mcp  # FastMCP instance from our code
+
+
+def setup_logging():
+    """Set up logging to both console and file"""
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = os.path.join(log_dir, f"mcp_server_{timestamp}.log")
+    
+    # Configure logging
+    logger = logging.getLogger()
+    logger.setLevel(logging.DEBUG)
+    
+    # Console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # File handler
+    file_handler = logging.FileHandler(log_file)
+    file_handler.setLevel(logging.DEBUG)
+    
+    # Format for both handlers
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+    
+    # Add handlers to logger
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    
+    return logger
+
+
+def main() -> int:
+    """
+    Run the MCP server based on the official examples
+    """
+    logger = setup_logging()
+    
+    try:
+        logger.info("=== ODOO MCP SERVER STARTING ===")
+        logger.info(f"Python version: {sys.version}")
+        logger.info("Environment variables:")
+        for key, value in os.environ.items():
+            if key.startswith("ODOO_"):
+                if key == "ODOO_PASSWORD":
+                    logger.info(f"  {key}: ***hidden***")
+                else:
+                    logger.info(f"  {key}: {value}")
+        
+        logger.info(f"MCP object type: {type(mcp)}")
+        
+        # Run server in stdio mode like the official examples
+        async def arun():
+            logger.info("Starting Odoo MCP server with stdio transport...")
+            async with stdio_server() as streams:
+                logger.info("Stdio server initialized, running MCP server...")
+                await mcp._mcp_server.run(
+                    streams[0], streams[1], mcp._mcp_server.create_initialization_options()
+                )
+                
+        # Run server
+        anyio.run(arun)
+        logger.info("MCP server stopped normally")
+        return 0
+        
+    except Exception as e:
+        logger.error(f"Fatal error: {e}", exc_info=True)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+</file>
+
+<file path="pyproject.toml">
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "odoo-mcp"
+version = "0.0.3"
+description = "MCP Server for Odoo Integration"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Operating System :: OS Independent",
+]
+keywords = ["odoo", "mcp", "server"]
+authors = [
+    {name = "Lê Anh Tuấn", email = "justin.le.1105@gmail.com"}
+]
+dependencies = [
+    "mcp>=0.1.1",
+    "requests>=2.31.0",
+    "pypi-xmlrpc==2020.12.3",
+]
+
+[project.urls]
+Homepage = "https://github.com/tuanle96/mcp-odoo"
+Issues = "https://github.com/tuanle96/mcp-odoo/issues"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "mypy",
+    "ruff",
+    "build",
+    "twine",
+]
+
+[project.scripts]
+odoo-mcp = "odoo_mcp.__main__:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["odoo_mcp"]
+
+[tool.black]
+line-length = 88
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+</file>
+
+<file path="src/odoo_mcp/server.py">
+"""
+MCP server for Odoo integration
+
+Provides MCP tools and resources for interacting with Odoo ERP systems
+"""
+
+import json
+from contextlib import asynccontextmanager
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any, AsyncIterator, Dict, List, Optional, Union, cast
+
+from mcp.server.fastmcp import Context, FastMCP
+from pydantic import BaseModel, Field
+
+from .odoo_client import OdooClient, get_odoo_client
+
+
+@dataclass
+class AppContext:
+    """Application context for the MCP server"""
+
+    odoo: OdooClient
+
+
+@asynccontextmanager
+async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
+    """
+    Application lifespan for initialization and cleanup
+    """
+    # Initialize Odoo client on startup
+    odoo_client = get_odoo_client()
+
+    try:
+        yield AppContext(odoo=odoo_client)
+    finally:
+        # No cleanup needed for Odoo client
+        pass
+
+
+# Create MCP server
+mcp = FastMCP(
+    "Odoo MCP Server",
+    description="MCP Server for interacting with Odoo ERP systems",
+    dependencies=["requests"],
+    lifespan=app_lifespan,
+)
+
+
+# ----- MCP Resources -----
+
+
+@mcp.resource(
+    "odoo://models", description="List all available models in the Odoo system"
+)
+def get_models() -> str:
+    """Lists all available models in the Odoo system"""
+    odoo_client = get_odoo_client()
+    models = odoo_client.get_models()
+    return json.dumps(models, indent=2)
+
+
+@mcp.resource(
+    "odoo://model/{model_name}",
+    description="Get detailed information about a specific model including fields",
+)
+def get_model_info(model_name: str) -> str:
+    """
+    Get information about a specific model
+
+    Parameters:
+        model_name: Name of the Odoo model (e.g., 'res.partner')
+    """
+    odoo_client = get_odoo_client()
+    try:
+        # Get model info
+        model_info = odoo_client.get_model_info(model_name)
+
+        # Get field definitions
+        fields = odoo_client.get_model_fields(model_name)
+        model_info["fields"] = fields
+
+        return json.dumps(model_info, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, indent=2)
+
+
+@mcp.resource(
+    "odoo://record/{model_name}/{record_id}",
+    description="Get detailed information of a specific record by ID",
+)
+def get_record(model_name: str, record_id: str) -> str:
+    """
+    Get a specific record by ID
+
+    Parameters:
+        model_name: Name of the Odoo model (e.g., 'res.partner')
+        record_id: ID of the record
+    """
+    odoo_client = get_odoo_client()
+    try:
+        record_id_int = int(record_id)
+        record = odoo_client.read_records(model_name, [record_id_int])
+        if not record:
+            return json.dumps(
+                {"error": f"Record not found: {model_name} ID {record_id}"}, indent=2
+            )
+        return json.dumps(record[0], indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, indent=2)
+
+
+@mcp.resource(
+    "odoo://search/{model_name}/{domain}",
+    description="Search for records matching the domain",
+)
+def search_records_resource(model_name: str, domain: str) -> str:
+    """
+    Search for records that match a domain
+
+    Parameters:
+        model_name: Name of the Odoo model (e.g., 'res.partner')
+        domain: Search domain in JSON format (e.g., '[["name", "ilike", "test"]]')
+    """
+    odoo_client = get_odoo_client()
+    try:
+        # Parse domain from JSON string
+        domain_list = json.loads(domain)
+
+        # Set a reasonable default limit
+        limit = 10
+
+        # Perform search_read for efficiency
+        results = odoo_client.search_read(model_name, domain_list, limit=limit)
+
+        return json.dumps(results, indent=2)
+    except Exception as e:
+        return json.dumps({"error": str(e)}, indent=2)
+
+
+# ----- Pydantic models for type safety -----
+
+
+class DomainCondition(BaseModel):
+    """A single condition in a search domain"""
+
+    field: str = Field(description="Field name to search")
+    operator: str = Field(
+        description="Operator (e.g., '=', '!=', '>', '<', 'in', 'not in', 'like', 'ilike')"
+    )
+    value: Any = Field(description="Value to compare against")
+
+    def to_tuple(self) -> List:
+        """Convert to Odoo domain condition tuple"""
+        return [self.field, self.operator, self.value]
+
+
+class SearchDomain(BaseModel):
+    """Search domain for Odoo models"""
+
+    conditions: List[DomainCondition] = Field(
+        default_factory=list,
+        description="List of conditions for searching. All conditions are combined with AND operator.",
+    )
+
+    def to_domain_list(self) -> List[List]:
+        """Convert to Odoo domain list format"""
+        return [condition.to_tuple() for condition in self.conditions]
+
+
+class EmployeeSearchResult(BaseModel):
+    """Represents a single employee search result."""
+
+    id: int = Field(description="Employee ID")
+    name: str = Field(description="Employee name")
+
+
+class SearchEmployeeResponse(BaseModel):
+    """Response model for the search_employee tool."""
+
+    success: bool = Field(description="Indicates if the search was successful")
+    result: Optional[List[EmployeeSearchResult]] = Field(
+        default=None, description="List of employee search results"
+    )
+    error: Optional[str] = Field(default=None, description="Error message, if any")
+
+
+class Holiday(BaseModel):
+    """Represents a single holiday."""
+
+    display_name: str = Field(description="Display name of the holiday")
+    start_datetime: str = Field(description="Start date and time of the holiday")
+    stop_datetime: str = Field(description="End date and time of the holiday")
+    employee_id: List[Union[int, str]] = Field(
+        description="Employee ID associated with the holiday"
+    )
+    name: str = Field(description="Name of the holiday")
+    state: str = Field(description="State of the holiday")
+
+
+class SearchHolidaysResponse(BaseModel):
+    """Response model for the search_holidays tool."""
+
+    success: bool = Field(description="Indicates if the search was successful")
+    result: Optional[List[Holiday]] = Field(
+        default=None, description="List of holidays found"
+    )
+    error: Optional[str] = Field(default=None, description="Error message, if any")
+
+
+# ----- MCP Tools -----
+
+
+@mcp.tool(description="Execute a custom method on an Odoo model")
+def execute_method(
+    ctx: Context,
+    model: str,
+    method: str,
+    args: List = None,
+    kwargs: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """
+    Execute a custom method on an Odoo model
+
+    Parameters:
+        model: The model name (e.g., 'res.partner')
+        method: Method name to execute
+        args: Positional arguments
+        kwargs: Keyword arguments
+
+    Returns:
+        Dictionary containing:
+        - success: Boolean indicating success
+        - result: Result of the method (if success)
+        - error: Error message (if failure)
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+    try:
+        args = args or []
+        kwargs = kwargs or {}
+
+        # Special handling for search methods like search, search_count, search_read
+        search_methods = ["search", "search_count", "search_read"]
+        if method in search_methods and args:
+            # Search methods usually have domain as the first parameter
+            # args: [[domain], limit, offset, ...] or [domain, limit, offset, ...]
+            normalized_args = list(
+                args
+            )  # Create a copy to avoid affecting the original args
+
+            if len(normalized_args) > 0:
+                # Process domain in args[0]
+                domain = normalized_args[0]
+                domain_list = []
+
+                # Check if domain is wrapped unnecessarily ([domain] instead of domain)
+                if (
+                    isinstance(domain, list)
+                    and len(domain) == 1
+                    and isinstance(domain[0], list)
+                ):
+                    # Case [[domain]] - unwrap to [domain]
+                    domain = domain[0]
+
+                # Normalize domain similar to search_records function
+                if domain is None:
+                    domain_list = []
+                elif isinstance(domain, dict):
+                    if "conditions" in domain:
+                        # Object format
+                        conditions = domain.get("conditions", [])
+                        domain_list = []
+                        for cond in conditions:
+                            if isinstance(cond, dict) and all(
+                                k in cond for k in ["field", "operator", "value"]
+                            ):
+                                domain_list.append(
+                                    [cond["field"], cond["operator"], cond["value"]]
+                                )
+                elif isinstance(domain, list):
+                    # List format
+                    if not domain:
+                        domain_list = []
+                    elif all(isinstance(item, list) for item in domain) or any(
+                        item in ["&", "|", "!"] for item in domain
+                    ):
+                        domain_list = domain
+                    elif len(domain) >= 3 and isinstance(domain[0], str):
+                        # Case [field, operator, value] (not [[field, operator, value]])
+                        domain_list = [domain]
+                elif isinstance(domain, str):
+                    # String format (JSON)
+                    try:
+                        parsed_domain = json.loads(domain)
+                        if (
+                            isinstance(parsed_domain, dict)
+                            and "conditions" in parsed_domain
+                        ):
+                            conditions = parsed_domain.get("conditions", [])
+                            domain_list = []
+                            for cond in conditions:
+                                if isinstance(cond, dict) and all(
+                                    k in cond for k in ["field", "operator", "value"]
+                                ):
+                                    domain_list.append(
+                                        [cond["field"], cond["operator"], cond["value"]]
+                                    )
+                        elif isinstance(parsed_domain, list):
+                            domain_list = parsed_domain
+                    except json.JSONDecodeError:
+                        try:
+                            import ast
+
+                            parsed_domain = ast.literal_eval(domain)
+                            if isinstance(parsed_domain, list):
+                                domain_list = parsed_domain
+                        except:
+                            domain_list = []
+
+                # Xác thực domain_list
+                if domain_list:
+                    valid_conditions = []
+                    for cond in domain_list:
+                        if isinstance(cond, str) and cond in ["&", "|", "!"]:
+                            valid_conditions.append(cond)
+                            continue
+
+                        if (
+                            isinstance(cond, list)
+                            and len(cond) == 3
+                            and isinstance(cond[0], str)
+                            and isinstance(cond[1], str)
+                        ):
+                            valid_conditions.append(cond)
+
+                    domain_list = valid_conditions
+
+                # Cập nhật args với domain đã chuẩn hóa
+                normalized_args[0] = domain_list
+                args = normalized_args
+
+                # Log for debugging
+                print(f"Executing {method} with normalized domain: {domain_list}")
+
+        result = odoo.execute_method(model, method, *args, **kwargs)
+        return {"success": True, "result": result}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@mcp.tool(description="Search for employees by name")
+def search_employee(
+    ctx: Context,
+    name: str,
+    limit: int = 20,
+) -> SearchEmployeeResponse:
+    """
+    Search for employees by name using Odoo's name_search method.
+
+    Parameters:
+        name: The name (or part of the name) to search for.
+        limit: The maximum number of results to return (default 20).
+
+    Returns:
+        SearchEmployeeResponse containing results or error information.
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+    model = "hr.employee"
+    method = "name_search"
+
+    args = []
+    kwargs = {"name": name, "limit": limit}
+
+    try:
+        result = odoo.execute_method(model, method, *args, **kwargs)
+        parsed_result = [
+            EmployeeSearchResult(id=item[0], name=item[1]) for item in result
+        ]
+        return SearchEmployeeResponse(success=True, result=parsed_result)
+    except Exception as e:
+        return SearchEmployeeResponse(success=False, error=str(e))
+
+
+@mcp.tool(description="Search for holidays within a date range")
+def search_holidays(
+    ctx: Context,
+    start_date: str,
+    end_date: str,
+    employee_id: Optional[int] = None,
+) -> SearchHolidaysResponse:
+    """
+    Searches for holidays within a specified date range.
+
+    Parameters:
+        start_date: Start date in YYYY-MM-DD format.
+        end_date: End date in YYYY-MM-DD format.
+        employee_id: Optional employee ID to filter holidays.
+
+    Returns:
+        SearchHolidaysResponse:  Object containing the search results.
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+
+    # Validate date format using datetime
+    try:
+        datetime.strptime(start_date, "%Y-%m-%d")
+    except ValueError:
+        return SearchHolidaysResponse(
+            success=False, error="Invalid start_date format. Use YYYY-MM-DD."
+        )
+    try:
+        datetime.strptime(end_date, "%Y-%m-%d")
+    except ValueError:
+        return SearchHolidaysResponse(
+            success=False, error="Invalid end_date format. Use YYYY-MM-DD."
+        )
+
+    # Calculate adjusted start_date (subtract one day)
+    start_date_dt = datetime.strptime(start_date, "%Y-%m-%d")
+    adjusted_start_date_dt = start_date_dt - timedelta(days=1)
+    adjusted_start_date = adjusted_start_date_dt.strftime("%Y-%m-%d")
+
+    # Build the domain
+    domain = [
+        "&",
+        ["start_datetime", "<=", f"{end_date} 22:59:59"],
+        # Use adjusted date
+        ["stop_datetime", ">=", f"{adjusted_start_date} 23:00:00"],
+    ]
+    if employee_id:
+        domain.append(
+            ["employee_id", "=", employee_id],
+        )
+
+    try:
+        holidays = odoo.search_read(
+            model_name="hr.leave.report.calendar",
+            domain=domain,
+        )
+        parsed_holidays = [Holiday(**holiday) for holiday in holidays]
+        return SearchHolidaysResponse(success=True, result=parsed_holidays)
+
+    except Exception as e:
+        return SearchHolidaysResponse(success=False, error=str(e))
+
+
+# ── Odoo 18 compatible tools ──────────────────────────────────────────────────
+# Odoo 18 breaking changes vs 16/17:
+#   - project.task: user_id (many2one) → user_ids (many2many)
+#   - project.task: date_assign removed
+#   - hr.leave: date_from/date_to → request_date_from/request_date_to
+
+
+class Task(BaseModel):
+    """A project task (Odoo 18 schema)."""
+
+    id: int
+    name: str
+    project_id: Optional[Any] = None  # [id, name] or False
+    stage_id: Optional[Any] = None    # [id, name] or False
+    user_ids: Optional[List[Any]] = None  # list of [id, name]
+    date_deadline: Optional[str] = None
+    priority: Optional[str] = None
+    active: Optional[bool] = None
+    description: Optional[str] = None
+
+
+class SearchTasksResponse(BaseModel):
+    success: bool
+    result: Optional[List[Task]] = None
+    error: Optional[str] = None
+
+
+class Project(BaseModel):
+    """A project record."""
+
+    id: int
+    name: str
+    partner_id: Optional[Any] = None  # customer
+    user_id: Optional[Any] = None     # project manager
+    date_start: Optional[str] = None
+    date: Optional[str] = None        # deadline
+    active: Optional[bool] = None
+    task_count: Optional[int] = None
+
+
+class SearchProjectsResponse(BaseModel):
+    success: bool
+    result: Optional[List[Project]] = None
+    error: Optional[str] = None
+
+
+# Safe field list for project.task on Odoo 18
+_TASK_FIELDS = [
+    "id", "name", "project_id", "stage_id",
+    "user_ids", "date_deadline", "priority", "active", "description",
+]
+
+# Safe field list for project.project on Odoo 18
+_PROJECT_FIELDS = [
+    "id", "name", "partner_id", "user_id",
+    "date_start", "date", "active", "task_count",
+]
+
+
+@mcp.tool(description="Search project tasks (Odoo 18 compatible). Use this instead of execute_method for project.task.")
+def search_tasks(
+    ctx: Context,
+    project_id: Optional[int] = None,
+    stage_name: Optional[str] = None,
+    active_only: bool = True,
+    limit: int = 50,
+) -> SearchTasksResponse:
+    """
+    Search project tasks using Odoo 18 field names.
+
+    Parameters:
+        project_id: Filter by project ID (None = all projects).
+        stage_name: Filter by stage name (partial, case-insensitive).
+        active_only: Only return active tasks (default True).
+        limit: Max records to return (default 50).
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+    try:
+        domain: List[Any] = []
+        if active_only:
+            domain.append(["active", "=", True])
+        if project_id is not None:
+            domain.append(["project_id", "=", project_id])
+        if stage_name:
+            domain.append(["stage_id.name", "ilike", stage_name])
+
+        records = odoo.search_read(
+            model_name="project.task",
+            domain=domain,
+            fields=_TASK_FIELDS,
+            limit=limit,
+        )
+        tasks = [Task(**r) for r in records]
+        return SearchTasksResponse(success=True, result=tasks)
+    except Exception as e:
+        return SearchTasksResponse(success=False, error=str(e))
+
+
+@mcp.tool(description="Search projects. Use this to list or look up projects.")
+def search_projects(
+    ctx: Context,
+    name: Optional[str] = None,
+    active_only: bool = True,
+    limit: int = 20,
+) -> SearchProjectsResponse:
+    """
+    Search project.project records.
+
+    Parameters:
+        name: Filter by name (partial, case-insensitive).
+        active_only: Only return active projects (default True).
+        limit: Max records to return (default 20).
+    """
+    odoo = ctx.request_context.lifespan_context.odoo
+    try:
+        domain: List[Any] = []
+        if active_only:
+            domain.append(["active", "=", True])
+        if name:
+            domain.append(["name", "ilike", name])
+
+        records = odoo.search_read(
+            model_name="project.project",
+            domain=domain,
+            fields=_PROJECT_FIELDS,
+            limit=limit,
+        )
+        projects = [Project(**r) for r in records]
+        return SearchProjectsResponse(success=True, result=projects)
+    except Exception as e:
+        return SearchProjectsResponse(success=False, error=str(e))
+</file>
+
+<file path="src/odoo_mcp/odoo_client.py">
+"""
+Odoo XML-RPC client for MCP server integration
+"""
+
+import json
+import os
+import re
+import socket
+import urllib.parse
+
+import http.client
+import xmlrpc.client
+
+
+class OdooClient:
+    """Client for interacting with Odoo via XML-RPC"""
+
+    def __init__(
+        self,
+        url,
+        db,
+        username,
+        password,
+        timeout=10,
+        verify_ssl=True,
+    ):
+        """
+        Initialize the Odoo client with connection parameters
+
+        Args:
+            url: Odoo server URL (with or without protocol)
+            db: Database name
+            username: Login username
+            password: Login password
+            timeout: Connection timeout in seconds
+            verify_ssl: Whether to verify SSL certificates
+        """
+        # Ensure URL has a protocol
+        if not re.match(r"^https?://", url):
+            url = f"http://{url}"
+
+        # Remove trailing slash from URL if present
+        url = url.rstrip("/")
+
+        self.url = url
+        self.db = db
+        self.username = username
+        self.password = password
+        self.uid = None
+
+        # Set timeout and SSL verification
+        self.timeout = timeout
+        self.verify_ssl = verify_ssl
+
+        # Setup connections
+        self._common = None
+        self._models = None
+
+        # Parse hostname for logging
+        parsed_url = urllib.parse.urlparse(self.url)
+        self.hostname = parsed_url.netloc
+
+        # Connect
+        self._connect()
+
+    def _connect(self):
+        """Initialize the XML-RPC connection and authenticate"""
+        # Tạo transport với timeout phù hợp
+        is_https = self.url.startswith("https://")
+        transport = RedirectTransport(
+            timeout=self.timeout, use_https=is_https, verify_ssl=self.verify_ssl
+        )
+
+        print(f"Connecting to Odoo at: {self.url}", file=os.sys.stderr)
+        print(f"  Hostname: {self.hostname}", file=os.sys.stderr)
+        print(
+            f"  Timeout: {self.timeout}s, Verify SSL: {self.verify_ssl}",
+            file=os.sys.stderr,
+        )
+
+        # Thiết lập endpoints
+        self._common = xmlrpc.client.ServerProxy(
+            f"{self.url}/xmlrpc/2/common", transport=transport
+        )
+        self._models = xmlrpc.client.ServerProxy(
+            f"{self.url}/xmlrpc/2/object", transport=transport
+        )
+
+        # Xác thực và lấy user ID
+        print(
+            f"Authenticating with database: {self.db}, username: {self.username}",
+            file=os.sys.stderr,
+        )
+        try:
+            print(
+                f"Making request to {self.hostname}/xmlrpc/2/common (attempt 1)",
+                file=os.sys.stderr,
+            )
+            self.uid = self._common.authenticate(
+                self.db, self.username, self.password, {}
+            )
+            if not self.uid:
+                raise ValueError("Authentication failed: Invalid username or password")
+        except (socket.error, socket.timeout, ConnectionError, TimeoutError) as e:
+            print(f"Connection error: {str(e)}", file=os.sys.stderr)
+            raise ConnectionError(f"Failed to connect to Odoo server: {str(e)}")
+        except Exception as e:
+            print(f"Authentication error: {str(e)}", file=os.sys.stderr)
+            raise ValueError(f"Failed to authenticate with Odoo: {str(e)}")
+
+    def _execute(self, model, method, *args, **kwargs):
+        """Execute a method on an Odoo model"""
+        return self._models.execute_kw(
+            self.db, self.uid, self.password, model, method, args, kwargs
+        )
+
+    def execute_method(self, model, method, *args, **kwargs):
+        """
+        Execute an arbitrary method on a model
+
+        Args:
+            model: The model name (e.g., 'res.partner')
+            method: Method name to execute
+            *args: Positional arguments to pass to the method
+            **kwargs: Keyword arguments to pass to the method
+
+        Returns:
+            Result of the method execution
+        """
+        return self._execute(model, method, *args, **kwargs)
+
+    def get_models(self):
+        """
+        Get a list of all available models in the system
+
+        Returns:
+            List of model names
+
+        Examples:
+            >>> client = OdooClient(url, db, username, password)
+            >>> models = client.get_models()
+            >>> print(len(models))
+            125
+            >>> print(models[:5])
+            ['res.partner', 'res.users', 'res.company', 'res.groups', 'ir.model']
+        """
+        try:
+            # First search for model IDs
+            model_ids = self._execute("ir.model", "search", [])
+
+            if not model_ids:
+                return {
+                    "model_names": [],
+                    "models_details": {},
+                    "error": "No models found",
+                }
+
+            # Then read the model data with only the most basic fields
+            # that are guaranteed to exist in all Odoo versions
+            result = self._execute("ir.model", "read", model_ids, ["model", "name"])
+
+            # Extract and sort model names alphabetically
+            models = sorted([rec["model"] for rec in result])
+
+            # For more detailed information, include the full records
+            models_info = {
+                "model_names": models,
+                "models_details": {
+                    rec["model"]: {"name": rec.get("name", "")} for rec in result
+                },
+            }
+
+            return models_info
+        except Exception as e:
+            print(f"Error retrieving models: {str(e)}", file=os.sys.stderr)
+            return {"model_names": [], "models_details": {}, "error": str(e)}
+
+    def get_model_info(self, model_name):
+        """
+        Get information about a specific model
+
+        Args:
+            model_name: Name of the model (e.g., 'res.partner')
+
+        Returns:
+            Dictionary with model information
+
+        Examples:
+            >>> client = OdooClient(url, db, username, password)
+            >>> info = client.get_model_info('res.partner')
+            >>> print(info['name'])
+            'Contact'
+        """
+        try:
+            result = self._execute(
+                "ir.model",
+                "search_read",
+                [("model", "=", model_name)],
+                {"fields": ["name", "model"]},
+            )
+
+            if not result:
+                return {"error": f"Model {model_name} not found"}
+
+            return result[0]
+        except Exception as e:
+            print(f"Error retrieving model info: {str(e)}", file=os.sys.stderr)
+            return {"error": str(e)}
+
+    def get_model_fields(self, model_name):
+        """
+        Get field definitions for a specific model
+
+        Args:
+            model_name: Name of the model (e.g., 'res.partner')
+
+        Returns:
+            Dictionary mapping field names to their definitions
+
+        Examples:
+            >>> client = OdooClient(url, db, username, password)
+            >>> fields = client.get_model_fields('res.partner')
+            >>> print(fields['name']['type'])
+            'char'
+        """
+        try:
+            fields = self._execute(model_name, "fields_get")
+            return fields
+        except Exception as e:
+            print(f"Error retrieving fields: {str(e)}", file=os.sys.stderr)
+            return {"error": str(e)}
+
+    def search_read(
+        self, model_name, domain, fields=None, offset=None, limit=None, order=None
+    ):
+        """
+        Search for records and read their data in a single call
+
+        Args:
+            model_name: Name of the model (e.g., 'res.partner')
+            domain: Search domain (e.g., [('is_company', '=', True)])
+            fields: List of field names to return (None for all)
+            offset: Number of records to skip
+            limit: Maximum number of records to return
+            order: Sorting criteria (e.g., 'name ASC, id DESC')
+
+        Returns:
+            List of dictionaries with the matching records
+
+        Examples:
+            >>> client = OdooClient(url, db, username, password)
+            >>> records = client.search_read('res.partner', [('is_company', '=', True)], limit=5)
+            >>> print(len(records))
+            5
+        """
+        try:
+            kwargs = {}
+            if offset:
+                kwargs["offset"] = offset
+            if fields is not None:
+                kwargs["fields"] = fields
+            if limit is not None:
+                kwargs["limit"] = limit
+            if order is not None:
+                kwargs["order"] = order
+
+            result = self._execute(model_name, "search_read", domain, kwargs)
+            return result
+        except Exception as e:
+            print(f"Error in search_read: {str(e)}", file=os.sys.stderr)
+            return []
+
+    def read_records(self, model_name, ids, fields=None):
+        """
+        Read data of records by IDs
+
+        Args:
+            model_name: Name of the model (e.g., 'res.partner')
+            ids: List of record IDs to read
+            fields: List of field names to return (None for all)
+
+        Returns:
+            List of dictionaries with the requested records
+
+        Examples:
+            >>> client = OdooClient(url, db, username, password)
+            >>> records = client.read_records('res.partner', [1])
+            >>> print(records[0]['name'])
+            'YourCompany'
+        """
+        try:
+            kwargs = {}
+            if fields is not None:
+                kwargs["fields"] = fields
+
+            result = self._execute(model_name, "read", ids, kwargs)
+            return result
+        except Exception as e:
+            print(f"Error reading records: {str(e)}", file=os.sys.stderr)
+            return []
+
+
+class RedirectTransport(xmlrpc.client.Transport):
+    """Transport that adds timeout, SSL verification, and redirect handling"""
+
+    def __init__(
+        self, timeout=10, use_https=True, verify_ssl=True, max_redirects=5, proxy=None
+    ):
+        super().__init__()
+        self.timeout = timeout
+        self.use_https = use_https
+        self.verify_ssl = verify_ssl
+        self.max_redirects = max_redirects
+        self.proxy = proxy or os.environ.get("HTTP_PROXY")
+
+        if use_https and not verify_ssl:
+            import ssl
+
+            self.context = ssl._create_unverified_context()
+
+    def make_connection(self, host):
+        if self.proxy:
+            proxy_url = urllib.parse.urlparse(self.proxy)
+            connection = http.client.HTTPConnection(
+                proxy_url.hostname, proxy_url.port, timeout=self.timeout
+            )
+            connection.set_tunnel(host)
+        else:
+            if self.use_https and not self.verify_ssl:
+                connection = http.client.HTTPSConnection(
+                    host, timeout=self.timeout, context=self.context
+                )
+            else:
+                if self.use_https:
+                    connection = http.client.HTTPSConnection(host, timeout=self.timeout)
+                else:
+                    connection = http.client.HTTPConnection(host, timeout=self.timeout)
+
+        return connection
+
+    def request(self, host, handler, request_body, verbose):
+        """Send HTTP request with retry for redirects"""
+        redirects = 0
+        while redirects < self.max_redirects:
+            try:
+                print(f"Making request to {host}{handler}", file=os.sys.stderr)
+                return super().request(host, handler, request_body, verbose)
+            except xmlrpc.client.ProtocolError as err:
+                if err.errcode in (301, 302, 303, 307, 308) and err.headers.get(
+                    "location"
+                ):
+                    redirects += 1
+                    location = err.headers.get("location")
+                    parsed = urllib.parse.urlparse(location)
+                    if parsed.netloc:
+                        host = parsed.netloc
+                    handler = parsed.path
+                    if parsed.query:
+                        handler += "?" + parsed.query
+                else:
+                    raise
+            except Exception as e:
+                print(f"Error during request: {str(e)}", file=os.sys.stderr)
+                raise
+
+        raise xmlrpc.client.ProtocolError(host + handler, 310, "Too many redirects", {})
+
+
+def load_config():
+    """
+    Load Odoo configuration from environment variables or config file
+
+    Returns:
+        dict: Configuration dictionary with url, db, username, password
+    """
+    # Define config file paths to check
+    config_paths = [
+        "./odoo_config.json",
+        os.path.expanduser("~/.config/odoo/config.json"),
+        os.path.expanduser("~/.odoo_config.json"),
+    ]
+
+    # Try environment variables first
+    if all(
+        var in os.environ
+        for var in ["ODOO_URL", "ODOO_DB", "ODOO_USERNAME", "ODOO_PASSWORD"]
+    ):
+        return {
+            "url": os.environ["ODOO_URL"],
+            "db": os.environ["ODOO_DB"],
+            "username": os.environ["ODOO_USERNAME"],
+            "password": os.environ["ODOO_PASSWORD"],
+        }
+
+    # Try to load from file
+    for path in config_paths:
+        expanded_path = os.path.expanduser(path)
+        if os.path.exists(expanded_path):
+            with open(expanded_path, "r") as f:
+                return json.load(f)
+
+    raise FileNotFoundError(
+        "No Odoo configuration found. Please create an odoo_config.json file or set environment variables."
+    )
+
+
+def get_odoo_client():
+    """
+    Get a configured Odoo client instance
+
+    Returns:
+        OdooClient: A configured Odoo client instance
+    """
+    config = load_config()
+
+    # Get additional options from environment variables
+    timeout = int(
+        os.environ.get("ODOO_TIMEOUT", "30")
+    )  # Increase default timeout to 30 seconds
+    verify_ssl = os.environ.get("ODOO_VERIFY_SSL", "1").lower() in ["1", "true", "yes"]
+
+    # Print detailed configuration
+    print("Odoo client configuration:", file=os.sys.stderr)
+    print(f"  URL: {config['url']}", file=os.sys.stderr)
+    print(f"  Database: {config['db']}", file=os.sys.stderr)
+    print(f"  Username: {config['username']}", file=os.sys.stderr)
+    print(f"  Timeout: {timeout}s", file=os.sys.stderr)
+    print(f"  Verify SSL: {verify_ssl}", file=os.sys.stderr)
+
+    return OdooClient(
+        url=config["url"],
+        db=config["db"],
+        username=config["username"],
+        password=config["password"],
+        timeout=timeout,
+        verify_ssl=verify_ssl,
+    )
+</file>
+
+<file path="README.md">
+# Odoo MCP Server
+
+An MCP server implementation that integrates with Odoo ERP systems, enabling AI assistants to interact with Odoo data and functionality through the Model Context Protocol.
+
+## Features
+
+* **Comprehensive Odoo Integration**: Full access to Odoo models, records, and methods
+* **XML-RPC Communication**: Secure connection to Odoo instances via XML-RPC
+* **Flexible Configuration**: Support for config files and environment variables
+* **Resource Pattern System**: URI-based access to Odoo data structures
+* **Error Handling**: Clear error messages for common Odoo API issues
+* **Stateless Operations**: Clean request/response cycle for reliable integration
+
+## Tools
+
+* **execute_method**
+  * Execute a custom method on an Odoo model
+  * Inputs:
+    * `model` (string): The model name (e.g., 'res.partner')
+    * `method` (string): Method name to execute
+    * `args` (optional array): Positional arguments
+    * `kwargs` (optional object): Keyword arguments
+  * Returns: Dictionary with the method result and success indicator
+
+* **search_employee**
+  * Search for employees by name
+  * Inputs:
+    * `name` (string): The name (or part of the name) to search for
+    * `limit` (optional number): The maximum number of results to return (default 20)
+  * Returns: Object containing success indicator, list of matching employee names and IDs, and any error message
+
+* **search_holidays**
+  * Searches for holidays within a specified date range
+  * Inputs:
+    * `start_date` (string): Start date in YYYY-MM-DD format
+    * `end_date` (string): End date in YYYY-MM-DD format
+    * `employee_id` (optional number): Optional employee ID to filter holidays
+  * Returns: Object containing success indicator, list of holidays found, and any error message
+
+## Resources
+
+* **odoo://models**
+  * Lists all available models in the Odoo system
+  * Returns: JSON array of model information
+
+* **odoo://model/{model_name}**
+  * Get information about a specific model including fields
+  * Example: `odoo://model/res.partner`
+  * Returns: JSON object with model metadata and field definitions
+
+* **odoo://record/{model_name}/{record_id}**
+  * Get a specific record by ID
+  * Example: `odoo://record/res.partner/1`
+  * Returns: JSON object with record data
+
+* **odoo://search/{model_name}/{domain}**
+  * Search for records that match a domain
+  * Example: `odoo://search/res.partner/[["is_company","=",true]]`
+  * Returns: JSON array of matching records (limited to 10 by default)
+
+## Configuration
+
+### Odoo Connection Setup
+
+1. Create a configuration file named `odoo_config.json`:
+
+```json
+{
+  "url": "https://your-odoo-instance.com",
+  "db": "your-database-name",
+  "username": "your-username",
+  "password": "your-password-or-api-key"
+}
+```
+
+2. Alternatively, use environment variables:
+   * `ODOO_URL`: Your Odoo server URL
+   * `ODOO_DB`: Database name
+   * `ODOO_USERNAME`: Login username
+   * `ODOO_PASSWORD`: Password or API key
+   * `ODOO_TIMEOUT`: Connection timeout in seconds (default: 30)
+   * `ODOO_VERIFY_SSL`: Whether to verify SSL certificates (default: true)
+   * `HTTP_PROXY`: Force the ODOO connection to use an HTTP proxy
+
+### Usage with Claude Desktop
+
+Add this to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "odoo": {
+      "command": "python",
+      "args": [
+        "-m",
+        "odoo_mcp"
+      ],
+      "env": {
+        "ODOO_URL": "https://your-odoo-instance.com",
+        "ODOO_DB": "your-database-name",
+        "ODOO_USERNAME": "your-username",
+        "ODOO_PASSWORD": "your-password-or-api-key"
+      }
+    }
+  }
+}
+```
+
+### Docker
+
+```json
+{
+  "mcpServers": {
+    "odoo": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "ODOO_URL",
+        "-e",
+        "ODOO_DB",
+        "-e",
+        "ODOO_USERNAME",
+        "-e",
+        "ODOO_PASSWORD",
+        "mcp/odoo"
+      ],
+      "env": {
+        "ODOO_URL": "https://your-odoo-instance.com",
+        "ODOO_DB": "your-database-name",
+        "ODOO_USERNAME": "your-username",
+        "ODOO_PASSWORD": "your-password-or-api-key"
+      }
+    }
+  }
+}
+```
+
+## Installation
+
+### Python Package
+
+```bash
+pip install odoo-mcp
+```
+
+### Running the Server
+
+```bash
+# Using the installed package
+odoo-mcp
+
+# Using the MCP development tools
+mcp dev odoo_mcp/server.py
+
+# With additional dependencies
+mcp dev odoo_mcp/server.py --with pandas --with numpy
+
+# Mount local code for development
+mcp dev odoo_mcp/server.py --with-editable .
+```
+
+## Build
+
+Docker build:
+
+```bash
+docker build -t mcp/odoo:latest -f Dockerfile .
+```
+
+## Parameter Formatting Guidelines
+
+When using the MCP tools for Odoo, pay attention to these parameter formatting guidelines:
+
+1. **Domain Parameter**:
+   * The following domain formats are supported:
+     * List format: `[["field", "operator", value], ...]`
+     * Object format: `{"conditions": [{"field": "...", "operator": "...", "value": "..."}]}`
+     * JSON string of either format
+   * Examples:
+     * List format: `[["is_company", "=", true]]`
+     * Object format: `{"conditions": [{"field": "date_order", "operator": ">=", "value": "2025-03-01"}]}`
+     * Multiple conditions: `[["date_order", ">=", "2025-03-01"], ["date_order", "<=", "2025-03-31"]]`
+
+2. **Fields Parameter**:
+   * Should be an array of field names: `["name", "email", "phone"]`
+   * The server will try to parse string inputs as JSON
+
+## License
+
+This MCP server is licensed under the MIT License.
+</file>
+
+</files>

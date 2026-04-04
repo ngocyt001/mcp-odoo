@@ -4,6 +4,7 @@ MCP server for Odoo integration
 Provides MCP tools and resources for interacting with Odoo ERP systems
 """
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -27,10 +28,14 @@ class AppContext:
 @asynccontextmanager
 async def app_lifespan(server: FastMCP) -> AsyncIterator[AppContext]:
     """
-    Application lifespan for initialization and cleanup
+    Application lifespan for initialization and cleanup.
+
+    get_odoo_client() makes a blocking synchronous XML-RPC call to authenticate
+    with Odoo. Running it in a thread executor prevents blocking the event loop,
+    which would otherwise delay MCP session initialization and trigger:
+      RuntimeError: Received request before initialization was complete
     """
-    # Initialize Odoo client on startup
-    odoo_client = get_odoo_client()
+    odoo_client = await asyncio.to_thread(get_odoo_client)
 
     try:
         yield AppContext(odoo=odoo_client)
